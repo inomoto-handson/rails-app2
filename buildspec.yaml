@@ -1,0 +1,34 @@
+version: 0.2
+
+env:
+  variables:
+    CONTAINER_NAME = "rails-app"
+
+phases:
+  pre_build:
+    commands:
+      # AWS アカウント ID を取得する
+      - AWS_ACCOUNT_ID = $(aws sts get-caller-identity --query "Account" --output text)
+      # リポジトリのURI を設定する
+      - REPOSITORY_URI=${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-3.amazonaws.com/${CONTAINER_NAME}
+      # ECR にログインする
+      - aws ecr get-login-password --region ap-northeast-3 | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast3.amazonaws.com
+  
+  build:
+    commands:
+      # コンテナイメージをビルドする
+      - docker build -t ${REPOSITORY_URI}:latest .
+      # 生成したイメージタグを付与する
+      - docker tag ${REPOSITORY_URI}:latest ${REPOSITORY_URI}:${IMAGE_TAG}
+
+  post_build:
+    commands:
+      # ビルドしたコンテナイメージをECRにプッシュする
+      - docker push ${REPOSITORY_URI}:${IMAGE_TAG}
+      # "コンテナの名前" と "コンテナイメージのURI" をimagedefinitions.jsonに書き込む
+      - printf '[{"name":"%s", "imageUri":"%s"}]' ${CONTAINER_NAME} ${REPOSITORY_URI}:${IMAGE_TAG} > imagedefinitions.json
+
+  artifacts:
+    files:
+      - imagedefinitions.json
+      
