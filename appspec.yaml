@@ -1,0 +1,9 @@
+version: 1
+Resources:
+- TargetService:
+    Type: AWS::ECS::Service
+    properties:
+      TaskDefinition: <TASK_DEFINITION>
+      LoadBalancerinfo:
+        ContainerName: rails-app2
+        ContainerPort: 3000
